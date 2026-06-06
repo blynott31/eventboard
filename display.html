@@ -1,0 +1,424 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Oak Ridge Orcas — Live Display</title>
+  <style>
+    :root {
+      --bg: #000000;
+      --panel: rgba(255,255,255,0.035);
+      --panel-border: rgba(255,255,255,0.11);
+      --label: #ffffff;
+      --muted: rgba(255,255,255,0.68);
+      --event-red: #ff1a1a;
+      --heat-green: #39ff14;
+      --blue-glow: rgba(0,126,190,0.18);
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      min-height: 100%;
+      background: var(--bg);
+      color: white;
+      font-family: Arial, Helvetica, sans-serif;
+      overflow: hidden;
+    }
+
+    body {
+      min-height: 100vh;
+      background:
+        radial-gradient(circle at 50% 8%, var(--blue-glow), transparent 48%),
+        #000;
+    }
+
+    .app {
+      min-height: 100vh;
+      width: 100vw;
+      padding: clamp(18px, 2vw, 42px);
+      display: flex;
+      flex-direction: column;
+      gap: clamp(14px, 1.6vw, 28px);
+    }
+
+    /* ── Header ── */
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 24px;
+      min-height: 110px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: clamp(16px, 2vw, 28px);
+      min-width: 0;
+    }
+
+    .logo-wrap {
+      width: clamp(90px, 10vw, 150px);
+      height: clamp(90px, 10vw, 150px);
+      border-radius: 999px;
+      background: white;
+      padding: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 0 28px rgba(255,255,255,0.22);
+      flex: 0 0 auto;
+    }
+
+    .logo-wrap img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      display: block;
+    }
+
+    .title-block { min-width: 0; }
+
+    .team-name {
+      font-size: clamp(28px, 4.2vw, 68px);
+      line-height: 1;
+      font-weight: 1000;
+      letter-spacing: 0.13em;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+
+    .meet-name {
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: clamp(18px, 2.1vw, 32px);
+      font-weight: 700;
+      letter-spacing: 0.04em;
+    }
+
+    .status-pill {
+      border: 1px solid rgba(255,255,255,0.22);
+      background: rgba(255,255,255,0.09);
+      color: rgba(255,255,255,0.82);
+      border-radius: 999px;
+      padding: 12px 20px;
+      font-size: clamp(13px, 1.2vw, 20px);
+      font-weight: 1000;
+      letter-spacing: 0.22em;
+      white-space: nowrap;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .status-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #39ff14;
+      box-shadow: 0 0 8px #39ff14;
+      animation: blink 2s ease-in-out infinite;
+    }
+
+    .status-dot.offline {
+      background: #ff1a1a;
+      box-shadow: 0 0 8px #ff1a1a;
+      animation: none;
+    }
+
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.3; }
+    }
+
+    /* ── Main display ── */
+    .display {
+      flex: 1;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: clamp(18px, 3vw, 48px);
+      min-height: 0;
+    }
+
+    .tile {
+      border: 1px solid var(--panel-border);
+      background: var(--panel);
+      border-radius: clamp(24px, 3vw, 48px);
+      box-shadow: inset 0 0 60px rgba(255,255,255,0.035);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-width: 0;
+      min-height: 0;
+      padding: clamp(10px, 2vw, 34px);
+    }
+
+    .tile-label {
+      color: var(--label);
+      font-size: clamp(50px, 7vw, 124px);
+      line-height: 1;
+      font-weight: 1000;
+      text-transform: uppercase;
+      letter-spacing: 0.18em;
+      margin-bottom: clamp(14px, 2vw, 36px);
+      text-align: center;
+    }
+
+    .number {
+      font-size: clamp(180px, 22vw, 430px);
+      line-height: 0.85;
+      font-weight: 1000;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: -0.06em;
+      user-select: none;
+      transform-origin: center;
+    }
+
+    .event-num {
+      color: var(--event-red);
+      text-shadow: 0 0 20px rgba(255,26,26,0.9), 0 0 60px rgba(255,26,26,0.7);
+    }
+
+    .heat-num {
+      color: var(--heat-green);
+      text-shadow: 0 0 20px rgba(57,255,20,0.9), 0 0 60px rgba(57,255,20,0.7);
+    }
+
+    .event-name {
+      margin-top: clamp(10px, 1.4vw, 24px);
+      font-size: clamp(16px, 2vw, 36px);
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      color: rgba(255, 100, 100, 0.85);
+      text-align: center;
+      text-transform: uppercase;
+      min-height: 1.4em;
+    }
+
+    .pulse {
+      animation: pulseScale 120ms ease-out;
+    }
+
+    @keyframes pulseScale {
+      0% { transform: scale(0.94); opacity: 0.78; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+
+    @media (max-width: 900px) {
+      .header { min-height: auto; }
+      .status-pill { display: none; }
+      .display { gap: 14px; }
+      .team-name { letter-spacing: 0.08em; }
+      .tile-label { letter-spacing: 0.1em; }
+    }
+
+    @media (orientation: portrait) {
+      .display { grid-template-columns: 1fr; }
+      .number { font-size: clamp(150px, 36vw, 360px); }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header class="header">
+      <div class="brand">
+        <div class="logo-wrap">
+          <img src="Orca Logo.jpg" alt="Oak Ridge Orcas logo" />
+        </div>
+        <div class="title-block">
+          <div class="team-name">Oak Ridge Orcas</div>
+          <div class="meet-name" id="meetName">Oak Ridge Orcas Swim Meet</div>
+        </div>
+      </div>
+      <div class="status-pill">
+        <span class="status-dot offline" id="statusDot"></span>
+        <span id="statusText">CONNECTING…</span>
+      </div>
+    </header>
+
+    <main class="display">
+      <section class="tile">
+        <div class="tile-label">Event</div>
+        <div class="number event-num" id="eventNumber">—</div>
+        <div class="event-name" id="eventName"></div>
+      </section>
+      <section class="tile">
+        <div class="tile-label">Heat</div>
+        <div class="number heat-num" id="heatNumber">—</div>
+      </section>
+    </main>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════
+       FIREBASE CONFIG — paste your project config here
+       Get it from: Firebase Console → Project Settings → Your Apps
+       ═══════════════════════════════════════════════════════════ -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+    import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+
+    const firebaseConfig = {
+      apiKey:            "AIzaSyDe3FetggUhZrmI_G-PV-xk6VpoQXfq6pA",
+      authDomain:        "orsceventboard.firebaseapp.com",
+      databaseURL:       "https://orsceventboard-default-rtdb.firebaseio.com",
+      projectId:         "orsceventboard",
+      storageBucket:     "orsceventboard.firebasestorage.app",
+      messagingSenderId: "548959943192",
+      appId:             "1:548959943192:web:d99036e76e82304e18616d"
+    };
+
+    // ── Event name lookup (from CSA_Duel_Meet_Event_List.xlsx) ──
+    const EVENT_NAMES = {
+      1: "Girls 6 & Under 100 SC Meter Freestyle Relay",
+      2: "Boys 6 & Under 100 SC Meter Freestyle Relay",
+      3: "Girls 8 & Under 100 SC Meter Medley Relay",
+      4: "Boys 8 & Under 100 SC Meter Medley Relay",
+      5: "Girls 9-10 200 SC Meter Medley Relay",
+      6: "Boys 9-10 200 SC Meter Medley Relay",
+      7: "Girls 11-12 200 SC Meter Medley Relay",
+      8: "Boys 11-12 200 SC Meter Medley Relay",
+      9: "Girls 13-14 200 SC Meter Medley Relay",
+      10: "Boys 13-14 200 SC Meter Medley Relay",
+      11: "Girls 15 & Over 200 SC Meter Medley Relay",
+      12: "Boys 15 & Over 200 SC Meter Medley Relay",
+      13: "Girls 6 & Under 25 SC Meter Backstroke",
+      14: "Boys 6 & Under 25 SC Meter Backstroke",
+      15: "Girls 8 & Under 25 SC Meter Backstroke",
+      16: "Boys 8 & Under 25 SC Meter Backstroke",
+      17: "Girls 9-10 50 SC Meter Backstroke",
+      18: "Boys 9-10 50 SC Meter Backstroke",
+      19: "Girls 11-12 50 SC Meter Backstroke",
+      20: "Boys 11-12 50 SC Meter Backstroke",
+      21: "Girls 13-14 50 SC Meter Backstroke",
+      22: "Boys 13-14 50 SC Meter Backstroke",
+      23: "Girls 15 & Over 50 SC Meter Backstroke",
+      24: "Boys 15 & Over 50 SC Meter Backstroke",
+      25: "Girls 6 & Under 25 SC Meter Freestyle",
+      26: "Boys 6 & Under 25 SC Meter Freestyle",
+      27: "Girls 8 & Under 25 SC Meter Freestyle",
+      28: "Boys 8 & Under 25 SC Meter Freestyle",
+      29: "Girls 9-10 100 SC Meter Freestyle",
+      30: "Boys 9-10 100 SC Meter Freestyle",
+      31: "Girls 11-12 100 SC Meter Freestyle",
+      32: "Boys 11-12 100 SC Meter Freestyle",
+      33: "Girls 13-14 100 SC Meter Freestyle",
+      34: "Boys 13-14 100 SC Meter Freestyle",
+      35: "Girls 15 & Over 100 SC Meter Freestyle",
+      36: "Boys 15 & Over 100 SC Meter Freestyle",
+      37: "Girls 8 & Under 25 SC Meter Breaststroke",
+      38: "Boys 8 & Under 25 SC Meter Breaststroke",
+      39: "Girls 9-10 50 SC Meter Breaststroke",
+      40: "Boys 9-10 50 SC Meter Breaststroke",
+      41: "Girls 11-12 50 SC Meter Breaststroke",
+      42: "Boys 11-12 50 SC Meter Breaststroke",
+      43: "Girls 13-14 50 SC Meter Breaststroke",
+      44: "Boys 13-14 50 SC Meter Breaststroke",
+      45: "Girls 15 & Over 50 SC Meter Breaststroke",
+      46: "Boys 15 & Over 50 SC Meter Breaststroke",
+      47: "Girls 8 & Under 25 SC Meter Butterfly",
+      48: "Boys 8 & Under 25 SC Meter Butterfly",
+      49: "Girls 9-10 50 SC Meter Butterfly",
+      50: "Boys 9-10 50 SC Meter Butterfly",
+      51: "Girls 11-12 50 SC Meter Butterfly",
+      52: "Boys 11-12 50 SC Meter Butterfly",
+      53: "Girls 13-14 50 SC Meter Butterfly",
+      54: "Boys 13-14 50 SC Meter Butterfly",
+      55: "Girls 15 & Over 50 SC Meter Butterfly",
+      56: "Boys 15 & Over 50 SC Meter Butterfly",
+      57: "Girls 8 & Under 50 SC Meter Freestyle",
+      58: "Boys 8 & Under 50 SC Meter Freestyle",
+      59: "Girls 9-10 50 SC Meter Freestyle",
+      60: "Boys 9-10 50 SC Meter Freestyle",
+      61: "Girls 11-12 50 SC Meter Freestyle",
+      62: "Boys 11-12 50 SC Meter Freestyle",
+      63: "Girls 13-14 50 SC Meter Freestyle",
+      64: "Boys 13-14 50 SC Meter Freestyle",
+      65: "Girls 15 & Over 50 SC Meter Freestyle",
+      66: "Boys 15 & Over 50 SC Meter Freestyle",
+      67: "Girls 9-10 100 SC Meter IM",
+      68: "Boys 9-10 100 SC Meter IM",
+      69: "Girls 11-12 100 SC Meter IM",
+      70: "Boys 11-12 100 SC Meter IM",
+      71: "Girls 13-14 100 SC Meter IM",
+      72: "Boys 13-14 100 SC Meter IM",
+      73: "Girls 15 & Over 100 SC Meter IM",
+      74: "Boys 15 & Over 100 SC Meter IM",
+      75: "Girls 8 & Under 100 SC Meter Freestyle Relay",
+      76: "Boys 8 & Under 100 SC Meter Freestyle Relay",
+      77: "Girls 9-10 200 SC Meter Freestyle Relay",
+      78: "Boys 9-10 200 SC Meter Freestyle Relay",
+      79: "Girls 11-12 200 SC Meter Freestyle Relay",
+      80: "Boys 11-12 200 SC Meter Freestyle Relay",
+      81: "Girls 13-14 200 SC Meter Freestyle Relay",
+      82: "Boys 13-14 200 SC Meter Freestyle Relay",
+      83: "Girls 15 & Over 200 SC Meter Freestyle Relay",
+      84: "Boys 15 & Over 200 SC Meter Freestyle Relay"
+    };
+
+    const eventNumEl  = document.getElementById("eventNumber");
+    const heatNumEl   = document.getElementById("heatNumber");
+    const eventNameEl = document.getElementById("eventName");
+    const meetNameEl  = document.getElementById("meetName");
+    const statusDot   = document.getElementById("statusDot");
+    const statusText  = document.getElementById("statusText");
+
+    function pulse(el) {
+      el.classList.remove("pulse");
+      void el.offsetWidth;
+      el.classList.add("pulse");
+    }
+
+    function setOnline() {
+      statusDot.classList.remove("offline");
+      statusText.textContent = "LIVE";
+    }
+
+    function setOffline() {
+      statusDot.classList.add("offline");
+      statusText.textContent = "OFFLINE";
+    }
+
+    let prevEvent = null, prevHeat = null;
+
+    try {
+      const app = initializeApp(firebaseConfig);
+      const db  = getDatabase(app);
+
+      // Watch connection state
+      const connRef = ref(db, ".info/connected");
+      onValue(connRef, (snap) => {
+        if (snap.val() === true) setOnline(); else setOffline();
+      });
+
+      // Watch board state
+      const boardRef = ref(db, "board");
+      onValue(boardRef, (snap) => {
+        const data = snap.val();
+        if (!data) return;
+
+        if (data.meetName !== undefined) meetNameEl.textContent = data.meetName;
+
+        if (data.event !== prevEvent) {
+          eventNumEl.textContent  = data.event ?? "—";
+          eventNameEl.textContent = EVENT_NAMES[data.event] || "";
+          pulse(eventNumEl);
+          prevEvent = data.event;
+        }
+
+        if (data.heat !== prevHeat) {
+          heatNumEl.textContent = data.heat ?? "—";
+          pulse(heatNumEl);
+          prevHeat = data.heat;
+        }
+      });
+
+    } catch (err) {
+      setOffline();
+      console.error("Firebase init failed:", err);
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,661 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Oak Ridge Orcas — Admin</title>
+  <style>
+    :root {
+      --bg: #000000;
+      --panel: rgba(255,255,255,0.035);
+      --panel-border: rgba(255,255,255,0.11);
+      --label: #ffffff;
+      --muted: rgba(255,255,255,0.68);
+      --event-red: #ff1a1a;
+      --heat-green: #39ff14;
+      --blue-glow: rgba(0,126,190,0.18);
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      min-height: 100%;
+      background: var(--bg);
+      color: white;
+      font-family: Arial, Helvetica, sans-serif;
+    }
+
+    body {
+      min-height: 100vh;
+      background:
+        radial-gradient(circle at 50% 8%, var(--blue-glow), transparent 48%),
+        #000;
+    }
+
+    .app {
+      min-height: 100vh;
+      width: 100vw;
+      padding: clamp(18px, 2vw, 42px);
+      display: flex;
+      flex-direction: column;
+      gap: clamp(14px, 1.6vw, 28px);
+    }
+
+    /* ── Header ── */
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 24px;
+      min-height: 110px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: clamp(16px, 2vw, 28px);
+      min-width: 0;
+    }
+
+    .logo-wrap {
+      width: clamp(70px, 8vw, 110px);
+      height: clamp(70px, 8vw, 110px);
+      border-radius: 999px;
+      background: white;
+      padding: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 0 28px rgba(255,255,255,0.22);
+      flex: 0 0 auto;
+    }
+
+    .logo-wrap img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      display: block;
+    }
+
+    .title-block { min-width: 0; }
+
+    .team-name {
+      font-size: clamp(22px, 3vw, 46px);
+      line-height: 1;
+      font-weight: 1000;
+      letter-spacing: 0.13em;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+
+    .admin-badge {
+      margin-top: 6px;
+      display: inline-block;
+      background: rgba(255,200,0,0.18);
+      border: 1px solid rgba(255,200,0,0.4);
+      color: #ffc800;
+      font-size: clamp(11px, 1.1vw, 16px);
+      font-weight: 1000;
+      letter-spacing: 0.2em;
+      padding: 4px 12px;
+      border-radius: 999px;
+      text-transform: uppercase;
+    }
+
+    .header-right {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 8px;
+    }
+
+    .status-pill {
+      border: 1px solid rgba(255,255,255,0.22);
+      background: rgba(255,255,255,0.09);
+      color: rgba(255,255,255,0.82);
+      border-radius: 999px;
+      padding: 8px 16px;
+      font-size: clamp(11px, 1vw, 16px);
+      font-weight: 1000;
+      letter-spacing: 0.18em;
+      white-space: nowrap;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .status-dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: #39ff14;
+      box-shadow: 0 0 8px #39ff14;
+      animation: blink 2s ease-in-out infinite;
+    }
+
+    .status-dot.offline {
+      background: #ff1a1a;
+      box-shadow: 0 0 8px #ff1a1a;
+      animation: none;
+    }
+
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.3; }
+    }
+
+    /* ── Preview strip ── */
+    .preview {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: clamp(14px, 2vw, 32px);
+    }
+
+    .tile {
+      border: 1px solid var(--panel-border);
+      background: var(--panel);
+      border-radius: clamp(18px, 2vw, 36px);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: clamp(14px, 2vw, 28px);
+      min-height: clamp(160px, 18vh, 280px);
+    }
+
+    .tile-label {
+      color: var(--label);
+      font-size: clamp(28px, 4vw, 64px);
+      font-weight: 1000;
+      text-transform: uppercase;
+      letter-spacing: 0.18em;
+      margin-bottom: 10px;
+      text-align: center;
+    }
+
+    .number {
+      font-size: clamp(90px, 12vw, 220px);
+      line-height: 0.88;
+      font-weight: 1000;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: -0.06em;
+      user-select: none;
+    }
+
+    .event-num {
+      color: var(--event-red);
+      text-shadow: 0 0 20px rgba(255,26,26,0.9), 0 0 60px rgba(255,26,26,0.7);
+    }
+
+    .heat-num {
+      color: var(--heat-green);
+      text-shadow: 0 0 20px rgba(57,255,20,0.9), 0 0 60px rgba(57,255,20,0.7);
+    }
+
+    .event-name-preview {
+      margin-top: 10px;
+      font-size: clamp(12px, 1.4vw, 22px);
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      color: rgba(255, 100, 100, 0.85);
+      text-align: center;
+      text-transform: uppercase;
+      min-height: 1.3em;
+    }
+
+    /* ── Controls ── */
+    .controls-section {
+      border: 1px solid rgba(255,255,255,0.15);
+      background: rgba(12,12,15,0.94);
+      border-radius: 22px;
+      padding: clamp(14px, 2vw, 24px);
+      box-shadow: 0 24px 80px rgba(0,0,0,0.5);
+    }
+
+    .meet-name-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .meet-name-row label {
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      color: var(--muted);
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+
+    .meet-name-input {
+      flex: 1;
+      background: rgba(255,255,255,0.07);
+      border: 1px solid rgba(255,255,255,0.18);
+      border-radius: 10px;
+      color: white;
+      font-size: 16px;
+      font-weight: 700;
+      padding: 10px 14px;
+      outline: none;
+    }
+
+    .meet-name-input:focus {
+      border-color: rgba(255,255,255,0.4);
+      background: rgba(255,255,255,0.1);
+    }
+
+    .btn-grid {
+      display: grid;
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+      gap: 10px;
+      align-items: center;
+    }
+
+    button {
+      appearance: none;
+      border: 0;
+      border-radius: 14px;
+      min-height: 54px;
+      background: #ffffff;
+      color: #111;
+      font-size: 18px;
+      font-weight: 1000;
+      cursor: pointer;
+      padding: 10px 14px;
+      transition: filter 0.1s, transform 0.1s;
+    }
+
+    button:hover  { filter: brightness(0.92); }
+    button:active { transform: translateY(1px); }
+    button:disabled { opacity: 0.35; cursor: not-allowed; }
+
+    .secondary {
+      background: rgba(255,255,255,0.16);
+      color: white;
+      border: 1px solid rgba(255,255,255,0.12);
+    }
+
+    .btn-next-heat  { background: #39ff14; color: #000; }
+    .btn-next-event { background: #ff1a1a; color: #fff; }
+
+    .hint {
+      grid-column: 1 / -1;
+      color: rgba(255,255,255,0.5);
+      font-size: 12px;
+      line-height: 1.5;
+      text-align: center;
+      padding-top: 4px;
+    }
+
+    /* locked state overlay */
+    .locked-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.65);
+      z-index: 50;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    body.is-locked .locked-overlay { display: flex; }
+
+    .locked-overlay span {
+      font-size: clamp(36px, 6vw, 80px);
+      font-weight: 1000;
+      letter-spacing: 0.25em;
+      color: #ffc800;
+      text-transform: uppercase;
+    }
+
+    .locked-overlay button {
+      font-size: 22px;
+      padding: 14px 40px;
+      background: #ffc800;
+      color: #000;
+      border-radius: 18px;
+    }
+
+    .pulse {
+      animation: pulseScale 120ms ease-out;
+    }
+
+    @keyframes pulseScale {
+      0% { transform: scale(0.94); opacity: 0.78; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+
+    @media (max-width: 900px) {
+      .header { min-height: auto; }
+      .btn-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+
+    @media (orientation: portrait) {
+      .preview { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+
+    <!-- Header -->
+    <header class="header">
+      <div class="brand">
+        <div class="logo-wrap">
+          <img src="Orca Logo.jpg" alt="Oak Ridge Orcas logo" />
+        </div>
+        <div class="title-block">
+          <div class="team-name">Oak Ridge Orcas</div>
+          <span class="admin-badge">Admin</span>
+        </div>
+      </div>
+      <div class="header-right">
+        <div class="status-pill">
+          <span class="status-dot offline" id="statusDot"></span>
+          <span id="statusText">CONNECTING…</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- Live preview (mirrors the display screen) -->
+    <div class="preview">
+      <section class="tile">
+        <div class="tile-label">Event</div>
+        <div class="number event-num" id="previewEvent">1</div>
+        <div class="event-name-preview" id="previewEventName"></div>
+      </section>
+      <section class="tile">
+        <div class="tile-label">Heat</div>
+        <div class="number heat-num" id="previewHeat">1</div>
+      </section>
+    </div>
+
+    <!-- Controls -->
+    <section class="controls-section">
+      <div class="meet-name-row">
+        <label for="meetNameInput">Meet Name</label>
+        <input class="meet-name-input" id="meetNameInput" type="text" value="Oak Ridge Orcas Swim Meet" />
+      </div>
+      <div class="btn-grid">
+        <button id="eventDown">− Event</button>
+        <button id="eventUp">+ Event</button>
+        <button id="heatDown">− Heat</button>
+        <button id="heatUp">+ Heat</button>
+        <button class="btn-next-heat"  id="nextHeat">Next Heat ▶</button>
+        <button class="btn-next-event" id="nextEvent">Next Event ▶▶</button>
+        <button class="secondary" id="lockBtn">🔒 Lock</button>
+        <button class="secondary" id="fullscreenBtn">⛶ Full Screen</button>
+        <button class="secondary" id="resetBtn">↺ Reset</button>
+        <div class="hint" style="grid-column: span 3;">
+          Keyboard: ↑/↓ Event · ←/→ Heat · Space Next Heat · N Next Event · R Reset · L Lock · F Full Screen
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- Lock overlay -->
+  <div class="locked-overlay" id="lockedOverlay">
+    <span>🔒 Board Locked</span>
+    <button id="unlockBtn">Unlock</button>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════
+       FIREBASE CONFIG — paste your project config here
+       Get it from: Firebase Console → Project Settings → Your Apps
+       ═══════════════════════════════════════════════════════════ -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+    import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+
+    const firebaseConfig = {
+      apiKey:            "AIzaSyDe3FetggUhZrmI_G-PV-xk6VpoQXfq6pA",
+      authDomain:        "orsceventboard.firebaseapp.com",
+      databaseURL:       "https://orsceventboard-default-rtdb.firebaseio.com",
+      projectId:         "orsceventboard",
+      storageBucket:     "orsceventboard.firebasestorage.app",
+      messagingSenderId: "548959943192",
+      appId:             "1:548959943192:web:d99036e76e82304e18616d"
+    };
+
+    // ── Event name lookup (from CSA_Duel_Meet_Event_List.xlsx) ──
+    const EVENT_NAMES = {
+      1: "Girls 6 & Under 100 SC Meter Freestyle Relay",
+      2: "Boys 6 & Under 100 SC Meter Freestyle Relay",
+      3: "Girls 8 & Under 100 SC Meter Medley Relay",
+      4: "Boys 8 & Under 100 SC Meter Medley Relay",
+      5: "Girls 9-10 200 SC Meter Medley Relay",
+      6: "Boys 9-10 200 SC Meter Medley Relay",
+      7: "Girls 11-12 200 SC Meter Medley Relay",
+      8: "Boys 11-12 200 SC Meter Medley Relay",
+      9: "Girls 13-14 200 SC Meter Medley Relay",
+      10: "Boys 13-14 200 SC Meter Medley Relay",
+      11: "Girls 15 & Over 200 SC Meter Medley Relay",
+      12: "Boys 15 & Over 200 SC Meter Medley Relay",
+      13: "Girls 6 & Under 25 SC Meter Backstroke",
+      14: "Boys 6 & Under 25 SC Meter Backstroke",
+      15: "Girls 8 & Under 25 SC Meter Backstroke",
+      16: "Boys 8 & Under 25 SC Meter Backstroke",
+      17: "Girls 9-10 50 SC Meter Backstroke",
+      18: "Boys 9-10 50 SC Meter Backstroke",
+      19: "Girls 11-12 50 SC Meter Backstroke",
+      20: "Boys 11-12 50 SC Meter Backstroke",
+      21: "Girls 13-14 50 SC Meter Backstroke",
+      22: "Boys 13-14 50 SC Meter Backstroke",
+      23: "Girls 15 & Over 50 SC Meter Backstroke",
+      24: "Boys 15 & Over 50 SC Meter Backstroke",
+      25: "Girls 6 & Under 25 SC Meter Freestyle",
+      26: "Boys 6 & Under 25 SC Meter Freestyle",
+      27: "Girls 8 & Under 25 SC Meter Freestyle",
+      28: "Boys 8 & Under 25 SC Meter Freestyle",
+      29: "Girls 9-10 100 SC Meter Freestyle",
+      30: "Boys 9-10 100 SC Meter Freestyle",
+      31: "Girls 11-12 100 SC Meter Freestyle",
+      32: "Boys 11-12 100 SC Meter Freestyle",
+      33: "Girls 13-14 100 SC Meter Freestyle",
+      34: "Boys 13-14 100 SC Meter Freestyle",
+      35: "Girls 15 & Over 100 SC Meter Freestyle",
+      36: "Boys 15 & Over 100 SC Meter Freestyle",
+      37: "Girls 8 & Under 25 SC Meter Breaststroke",
+      38: "Boys 8 & Under 25 SC Meter Breaststroke",
+      39: "Girls 9-10 50 SC Meter Breaststroke",
+      40: "Boys 9-10 50 SC Meter Breaststroke",
+      41: "Girls 11-12 50 SC Meter Breaststroke",
+      42: "Boys 11-12 50 SC Meter Breaststroke",
+      43: "Girls 13-14 50 SC Meter Breaststroke",
+      44: "Boys 13-14 50 SC Meter Breaststroke",
+      45: "Girls 15 & Over 50 SC Meter Breaststroke",
+      46: "Boys 15 & Over 50 SC Meter Breaststroke",
+      47: "Girls 8 & Under 25 SC Meter Butterfly",
+      48: "Boys 8 & Under 25 SC Meter Butterfly",
+      49: "Girls 9-10 50 SC Meter Butterfly",
+      50: "Boys 9-10 50 SC Meter Butterfly",
+      51: "Girls 11-12 50 SC Meter Butterfly",
+      52: "Boys 11-12 50 SC Meter Butterfly",
+      53: "Girls 13-14 50 SC Meter Butterfly",
+      54: "Boys 13-14 50 SC Meter Butterfly",
+      55: "Girls 15 & Over 50 SC Meter Butterfly",
+      56: "Boys 15 & Over 50 SC Meter Butterfly",
+      57: "Girls 8 & Under 50 SC Meter Freestyle",
+      58: "Boys 8 & Under 50 SC Meter Freestyle",
+      59: "Girls 9-10 50 SC Meter Freestyle",
+      60: "Boys 9-10 50 SC Meter Freestyle",
+      61: "Girls 11-12 50 SC Meter Freestyle",
+      62: "Boys 11-12 50 SC Meter Freestyle",
+      63: "Girls 13-14 50 SC Meter Freestyle",
+      64: "Boys 13-14 50 SC Meter Freestyle",
+      65: "Girls 15 & Over 50 SC Meter Freestyle",
+      66: "Boys 15 & Over 50 SC Meter Freestyle",
+      67: "Girls 9-10 100 SC Meter IM",
+      68: "Boys 9-10 100 SC Meter IM",
+      69: "Girls 11-12 100 SC Meter IM",
+      70: "Boys 11-12 100 SC Meter IM",
+      71: "Girls 13-14 100 SC Meter IM",
+      72: "Boys 13-14 100 SC Meter IM",
+      73: "Girls 15 & Over 100 SC Meter IM",
+      74: "Boys 15 & Over 100 SC Meter IM",
+      75: "Girls 8 & Under 100 SC Meter Freestyle Relay",
+      76: "Boys 8 & Under 100 SC Meter Freestyle Relay",
+      77: "Girls 9-10 200 SC Meter Freestyle Relay",
+      78: "Boys 9-10 200 SC Meter Freestyle Relay",
+      79: "Girls 11-12 200 SC Meter Freestyle Relay",
+      80: "Boys 11-12 200 SC Meter Freestyle Relay",
+      81: "Girls 13-14 200 SC Meter Freestyle Relay",
+      82: "Boys 13-14 200 SC Meter Freestyle Relay",
+      83: "Girls 15 & Over 200 SC Meter Freestyle Relay",
+      84: "Boys 15 & Over 200 SC Meter Freestyle Relay"
+    };
+
+    const MIN_EVENT = 1, MAX_EVENT = 84;
+    const MIN_HEAT  = 1, MAX_HEAT  = 9;
+
+    let eventNumber = 1;
+    let heatNumber  = 1;
+    let locked      = false;
+    let pushTimeout = null;
+
+    // DOM refs
+    const previewEvent     = document.getElementById("previewEvent");
+    const previewHeat      = document.getElementById("previewHeat");
+    const previewEventName = document.getElementById("previewEventName");
+    const meetNameInput    = document.getElementById("meetNameInput");
+    const lockBtn          = document.getElementById("lockBtn");
+    const statusDot        = document.getElementById("statusDot");
+    const statusText       = document.getElementById("statusText");
+
+    // Firebase
+    const app = initializeApp(firebaseConfig);
+    const db  = getDatabase(app);
+    const boardRef = ref(db, "board");
+
+    // Connection status
+    onValue(ref(db, ".info/connected"), (snap) => {
+      if (snap.val()) {
+        statusDot.classList.remove("offline");
+        statusText.textContent = "CONNECTED";
+      } else {
+        statusDot.classList.add("offline");
+        statusText.textContent = "OFFLINE";
+      }
+    });
+
+    // Sync incoming changes from Firebase (handles multi-device scenario)
+    onValue(boardRef, (snap) => {
+      const data = snap.val();
+      if (!data) return;
+      if (data.event   !== undefined) eventNumber = data.event;
+      if (data.heat    !== undefined) heatNumber  = data.heat;
+      if (data.locked  !== undefined) locked      = data.locked;
+      if (data.meetName !== undefined) meetNameInput.value = data.meetName;
+      renderLocal();
+    });
+
+    function clamp(v, lo, hi) { return Math.min(hi, Math.max(lo, v)); }
+
+    function pulse(el) {
+      el.classList.remove("pulse");
+      void el.offsetWidth;
+      el.classList.add("pulse");
+    }
+
+    function renderLocal() {
+      previewEvent.textContent     = eventNumber;
+      previewHeat.textContent      = heatNumber;
+      previewEventName.textContent = EVENT_NAMES[eventNumber] || "";
+      lockBtn.textContent          = locked ? "🔓 Unlock" : "🔒 Lock";
+      document.body.classList.toggle("is-locked", locked);
+
+      const controlBtns = document.querySelectorAll(".btn-grid button:not(#lockBtn):not(#fullscreenBtn)");
+      controlBtns.forEach(b => b.disabled = locked);
+    }
+
+    function pushToFirebase() {
+      // Debounce rapid taps — push after 80 ms idle
+      clearTimeout(pushTimeout);
+      pushTimeout = setTimeout(() => {
+        set(boardRef, {
+          event:    eventNumber,
+          heat:     heatNumber,
+          locked:   locked,
+          meetName: meetNameInput.value
+        });
+      }, 80);
+    }
+
+    function changeEvent(delta) {
+      if (locked) return;
+      const prev = eventNumber;
+      eventNumber = clamp(eventNumber + delta, MIN_EVENT, MAX_EVENT);
+      if (eventNumber !== prev) { heatNumber = 1; pulse(previewEvent); pulse(previewHeat); }
+      renderLocal();
+      pushToFirebase();
+    }
+
+    function changeHeat(delta) {
+      if (locked) return;
+      const prev = heatNumber;
+      heatNumber = clamp(heatNumber + delta, MIN_HEAT, MAX_HEAT);
+      if (heatNumber !== prev) pulse(previewHeat);
+      renderLocal();
+      pushToFirebase();
+    }
+
+    function resetBoard() {
+      if (locked) return;
+      eventNumber = 1; heatNumber = 1;
+      pulse(previewEvent); pulse(previewHeat);
+      renderLocal();
+      pushToFirebase();
+    }
+
+    function toggleLock() {
+      locked = !locked;
+      renderLocal();
+      pushToFirebase();
+    }
+
+    function requestFullscreen() {
+      const el = document.documentElement;
+      if (document.fullscreenElement) document.exitFullscreen?.();
+      else el.requestFullscreen?.();
+    }
+
+    // Button wiring
+    document.getElementById("eventDown").addEventListener("click",  () => changeEvent(-1));
+    document.getElementById("eventUp").addEventListener("click",    () => changeEvent(1));
+    document.getElementById("heatDown").addEventListener("click",   () => changeHeat(-1));
+    document.getElementById("heatUp").addEventListener("click",     () => changeHeat(1));
+    document.getElementById("nextHeat").addEventListener("click",   () => changeHeat(1));
+    document.getElementById("nextEvent").addEventListener("click",  () => changeEvent(1));
+    document.getElementById("resetBtn").addEventListener("click",   resetBoard);
+    document.getElementById("fullscreenBtn").addEventListener("click", requestFullscreen);
+    lockBtn.addEventListener("click", toggleLock);
+    document.getElementById("unlockBtn").addEventListener("click",  toggleLock);
+    meetNameInput.addEventListener("input", pushToFirebase);
+
+    // Keyboard shortcuts
+    window.addEventListener("keydown", (e) => {
+      const typing = ["INPUT", "TEXTAREA"].includes(document.activeElement?.tagName);
+      if (typing && e.key !== "Escape") return;
+
+      if (e.key.toLowerCase() === "l") { toggleLock(); return; }
+      if (e.key.toLowerCase() === "f") { requestFullscreen(); return; }
+      if (locked) return;
+
+      if (["ArrowUp","ArrowDown","ArrowLeft","ArrowRight"," "].includes(e.key)) e.preventDefault();
+      if (e.key === "ArrowUp")    changeEvent(1);
+      if (e.key === "ArrowDown")  changeEvent(-1);
+      if (e.key === "ArrowRight") changeHeat(1);
+      if (e.key === "ArrowLeft")  changeHeat(-1);
+      if (e.key === " ")          changeHeat(1);
+      if (e.key.toLowerCase() === "n") changeEvent(1);
+      if (e.key.toLowerCase() === "r") resetBoard();
+    });
+
+    renderLocal();
+  </script>
+</body>
+</html>
